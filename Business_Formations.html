@@ -1,0 +1,173 @@
+import io, textwrap
+html = textwrap.dedent('''
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>From Notebook to Narrative: Predicting U.S. Business Formation with Random Forests</title>
+  <style>
+    body { font-family: Arial, Helvetica, sans-serif; line-height: 1.6; margin: 40px auto; max-width: 960px; padding: 0 20px; color: #222; }
+    h1, h2, h3 { color: #0f3d75; }
+    .meta { color: #666; font-size: 0.95rem; margin-bottom: 2rem; }
+    .callout { background: #f4f8ff; border-left: 4px solid #3b82f6; padding: 14px 16px; margin: 20px 0; }
+    code, pre { background: #f6f6f6; border-radius: 6px; }
+    code { padding: 2px 5px; }
+    pre { padding: 14px; overflow-x: auto; }
+    ul { margin-top: 0.4rem; }
+    .footer { margin-top: 40px; font-size: 0.9rem; color: #666; border-top: 1px solid #ddd; padding-top: 16px; }
+  </style>
+</head>
+<body>
+  <h1>From Notebook to Narrative: Predicting U.S. Business Formation with Random Forests</h1>
+  <p class="meta">A blog-style walkthrough of a data science project based on U.S. Census Bureau Business Formation Statistics.</p>
+
+  <p>One of the most interesting things about applied data science is that it often begins with a very practical question: <em>can we predict what happens next?</em> In this project, that question is framed around U.S. business formation activity. Using weekly Business Formation Statistics (BFS) from the U.S. Census Bureau, the notebook explores whether state-level business application activity can be classified as an <strong>increase</strong>, <strong>decrease</strong>, or <strong>constant</strong> relative to the previous week.</p>
+
+  <p>At first glance, this looks like a classic machine learning exercise. But what makes the notebook especially valuable is that it does more than simply train a model. It also shows good analytical hygiene: validating source data, reshaping it carefully, testing distributions, separating training and testing chronologically, and interpreting feature importance rather than stopping at a single accuracy number.</p>
+
+  <h2>The Business Problem</h2>
+  <p>The project focuses on weekly business application counts, specifically <code>BA_NSA</code>, a non-seasonally adjusted measure. The modeling goal is not to predict the exact number of applications. Instead, it asks a more realistic and potentially actionable question:</p>
+
+  <div class="callout">
+    Can we predict whether current-week state-level business formation is going <strong>up</strong>, <strong>down</strong>, or staying roughly <strong>constant</strong>, without directly using the current week's state-level value?
+  </div>
+
+  <p>This framing is smart. Directional classification is often more robust than point prediction, especially in noisy economic time series.</p>
+
+  <h2>The Data Foundation</h2>
+  <p>The notebook uses two CSV inputs:</p>
+  <ul>
+    <li><code>bfs_us_apps_weekly_nsa.csv</code> — national weekly business formation data</li>
+    <li><code>bfs_state_apps_weekly_nsa.csv</code> — state-level weekly business formation data</li>
+  </ul>
+
+  <p>From there, the workflow performs several careful preprocessing steps:</p>
+  <ul>
+    <li>Checks that key columns such as <code>Year</code>, <code>Week</code>, and <code>State</code> exist</li>
+    <li>Converts time keys and numeric features into consistent numeric types</li>
+    <li>Validates that there are no duplicate state-week or national week records</li>
+    <li>Pivots state data into a wide format so features become columns such as <code>CA_BA_NSA</code></li>
+    <li>Merges the state-wide data with U.S.-level features using an outer join</li>
+  </ul>
+
+  <p>This is a strong foundation. In many real-world ML projects, the difference between success and failure is not the model choice but the quality of upstream data engineering. Here, the notebook treats data validation as a first-class step rather than an afterthought.</p>
+
+  <h2>Exploration Before Modeling</h2>
+  <p>Before training the random forest, the notebook spends time understanding the data. It plots weekly application trends for the U.S. and checks for missing values across the merged dataset. It also performs normality testing using the Jarque-Bera test and generates histograms and Q-Q plots for selected features.</p>
+
+  <p>That exploratory work is useful for two reasons. First, it reveals the structure and imperfections of the data. Second, it reminds us that economic time series are rarely “clean” in the statistical sense. Many features are unlikely to be normally distributed, and that is perfectly acceptable here because tree-based models such as random forests do not rely on normality assumptions the way some linear methods do.</p>
+
+  <div class="callout">
+    Commentary: the normality tests are analytically interesting, but not strictly necessary for a random forest. Their real value is diagnostic: they help the analyst better understand the behavior of the feature space.
+  </div>
+
+  <h2>How the Features Are Constructed</h2>
+  <p>The modeling design is one of the most thoughtful parts of the project. For every state and target week, the feature vector includes:</p>
+  <ul>
+    <li>The previous <strong>52 weeks</strong> of that state’s historical feature values</li>
+    <li>The <strong>current-week national</strong> U.S. features</li>
+    <li>A <strong>one-hot encoded state identifier</strong></li>
+  </ul>
+
+  <p>The target label is derived from whether that state's current <code>BA_NSA</code> is lower, equal to, or higher than the prior week. These become the three classes:</p>
+  <ul>
+    <li><strong>DECREASED</strong></li>
+    <li><strong>CONSTANT</strong></li>
+    <li><strong>INCREASED</strong></li>
+  </ul>
+
+  <p>This setup captures both local temporal memory and national context. In plain terms: the model is allowed to look at how a given state has behaved over the last year, while also seeing what is happening nationally in the same week.</p>
+
+  <h2>Why the Train/Test Split Matters</h2>
+  <p>One of the most important methodological choices is the chronological split:</p>
+  <ul>
+    <li><strong>Training:</strong> 2006–2023</li>
+    <li><strong>Testing:</strong> 2024–2026</li>
+  </ul>
+
+  <p>This is exactly what we want in a forecasting-style problem. Random shuffling would create leakage across time and make evaluation overly optimistic. By holding out future years, the notebook tests whether the model generalizes to genuinely unseen periods.</p>
+
+  <p>Missing predictor values are imputed using <strong>training-set medians only</strong>, another good practice because it avoids contaminating the training pipeline with information from the future.</p>
+
+  <h2>The Model: Random Forest Classification</h2>
+  <p>The chosen model is a <code>RandomForestClassifier</code> with 100 trees and a maximum tree depth of 7. That is a sensible balance between expressive power and overfitting control. Random forests are especially attractive here because they:</p>
+  <ul>
+    <li>Handle nonlinear relationships well</li>
+    <li>Are robust to mixed feature distributions</li>
+    <li>Can naturally rank feature importance</li>
+    <li>Require relatively little feature scaling or transformation</li>
+  </ul>
+
+  <p>The notebook evaluates the model both on the training data and on the held-out test period using:</p>
+  <ul>
+    <li>Overall multiclass accuracy</li>
+    <li>Confusion matrices</li>
+    <li>Per-class recall</li>
+    <li>Macro recall across the three classes</li>
+  </ul>
+
+  <p>This is a thoughtful evaluation set. Accuracy alone can hide class imbalance or weak performance on one particular direction. Reporting recall per class makes the assessment more transparent.</p>
+
+  <h2>Interpreting the Results</h2>
+  <p>The PDF conversion shows the workflow and evaluation logic clearly, though it does not expose the actual final accuracy numbers in the extracted text. Even so, the project already demonstrates a mature structure for answering its core questions:</p>
+  <ol>
+    <li><strong>Can state-level business formation direction be predicted?</strong></li>
+    <li><strong>Which features matter most?</strong></li>
+  </ol>
+
+  <p>The feature importance analysis uses mean decrease in impurity (MDI) from the fitted random forest. Features are grouped into:</p>
+  <ul>
+    <li>Lagged state features</li>
+    <li>Current-week national features</li>
+    <li>State identity indicators</li>
+  </ul>
+
+  <p>This grouping is valuable because it moves the analysis beyond a raw top-20 list and asks a more strategic question: <em>does predictive strength come mainly from recent local history, national macro signals, or simply persistent state-specific patterns?</em></p>
+
+  <div class="callout">
+    Commentary: if lagged state features dominate, that suggests local momentum and seasonality drive most of the signal. If national contemporaneous features rank highly, it implies broader macro conditions meaningfully influence state-level business creation behavior.
+  </div>
+
+  <h2>What I Like About This Project</h2>
+  <p>This notebook stands out for several reasons:</p>
+  <ul>
+    <li>It is grounded in a clear, realistic business question</li>
+    <li>It respects time ordering and avoids obvious leakage</li>
+    <li>It combines exploratory data analysis with predictive modeling</li>
+    <li>It includes interpretability through feature importance</li>
+    <li>It uses code safeguards and validation checks throughout</li>
+  </ul>
+
+  <p>In other words, it looks like a project designed not just to ��make a model work,” but to make the workflow credible.</p>
+
+  <h2>What Could Be Improved Next</h2>
+  <p>If this project were expanded further, a few next steps could make it even stronger:</p>
+  <ul>
+    <li><strong>Add benchmark models</strong> such as logistic regression, XGBoost, or naive directional baselines</li>
+    <li><strong>Use rolling-window validation</strong> instead of a single train/test split for more robust temporal evaluation</li>
+    <li><strong>Address class imbalance explicitly</strong> if the CONSTANT class is rare</li>
+    <li><strong>Test permutation importance or SHAP</strong> for more reliable interpretability than impurity-based importance alone</li>
+    <li><strong>Introduce calendar effects</strong> such as week-of-year seasonality features</li>
+    <li><strong>Explore state clustering</strong> to see whether similar states share predictive patterns</li>
+  </ul>
+
+  <p>A particularly interesting extension would be to move from classification toward probability-based decision support. Rather than only predicting “increase” or “decrease,” the model could estimate confidence levels, which would be more actionable for downstream users.</p>
+
+  <h2>Final Takeaway</h2>
+  <p>This project is a strong example of practical time-aware machine learning. It takes publicly available economic data, structures it carefully, and applies a reasonable model to answer a meaningful question about business dynamism in the United States.</p>
+
+  <p>More importantly, it reflects a solid analytical mindset: validate first, explore second, model third, and interpret throughout. That is exactly the kind of discipline that turns a notebook into a compelling data science story.</p>
+
+  <p>If you wanted to publish this as a portfolio piece, it is already close. With a short summary of actual performance metrics and a few visuals exported cleanly from the notebook, it could become an excellent technical blog post or project case study.</p>
+
+  <div class="footer">
+    Generated as an HTML blog post from the content of <em>Business_Formation_Analysis_Project.pdf</em>.
+  </div>
+</body>
+</html>
+''')
+
+buf = io.BytesIO(html.encode('utf-8'))
+save_file('business_formation_blogpost.html', buf.getvalue(), 'text/html')
+print('Created business_formation_blogpost.html')
