@@ -1,5 +1,3 @@
-import io, textwrap
-html = textwrap.dedent('''
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -20,8 +18,7 @@ html = textwrap.dedent('''
 </head>
 <body>
   <h1>From Notebook to Narrative: Predicting U.S. Business Formation with Random Forests</h1>
-  <p class="meta">A blog-style walkthrough of a data science project based on U.S. Census Bureau Business Formation Statistics.</p>
-
+  
   <p>One of the most interesting things about applied data science is that it often begins with a very practical question: <em>can we predict what happens next?</em> In this project, that question is framed around U.S. business formation activity. Using weekly Business Formation Statistics (BFS) from the U.S. Census Bureau, the notebook explores whether state-level business application activity can be classified as an <strong>increase</strong>, <strong>decrease</strong>, or <strong>constant</strong> relative to the previous week.</p>
 
   <p>At first glance, this looks like a classic machine learning exercise. But what makes the notebook especially valuable is that it does more than simply train a model. It also shows good analytical hygiene: validating source data, reshaping it carefully, testing distributions, separating training and testing chronologically, and interpreting feature importance rather than stopping at a single accuracy number.</p>
@@ -129,45 +126,11 @@ html = textwrap.dedent('''
     Commentary: if lagged state features dominate, that suggests local momentum and seasonality drive most of the signal. If national contemporaneous features rank highly, it implies broader macro conditions meaningfully influence state-level business creation behavior.
   </div>
 
-  <h2>What I Like About This Project</h2>
-  <p>This notebook stands out for several reasons:</p>
-  <ul>
-    <li>It is grounded in a clear, realistic business question</li>
-    <li>It respects time ordering and avoids obvious leakage</li>
-    <li>It combines exploratory data analysis with predictive modeling</li>
-    <li>It includes interpretability through feature importance</li>
-    <li>It uses code safeguards and validation checks throughout</li>
-  </ul>
+  <h2>Conclusion</h2>
+  The most important 3 features for the classification of next week state level business formation applications increas/decrease (or no change) are the following:
+  
+  - <strong>National current CBA_NSA</strong>
+  - <strong>National current HBA_NSA</strong>
+  - <strong>Previous week state CBA_NSA</strong>
 
-  <p>In other words, it looks like a project designed not just to ��make a model work,” but to make the workflow credible.</p>
-
-  <h2>What Could Be Improved Next</h2>
-  <p>If this project were expanded further, a few next steps could make it even stronger:</p>
-  <ul>
-    <li><strong>Add benchmark models</strong> such as logistic regression, XGBoost, or naive directional baselines</li>
-    <li><strong>Use rolling-window validation</strong> instead of a single train/test split for more robust temporal evaluation</li>
-    <li><strong>Address class imbalance explicitly</strong> if the CONSTANT class is rare</li>
-    <li><strong>Test permutation importance or SHAP</strong> for more reliable interpretability than impurity-based importance alone</li>
-    <li><strong>Introduce calendar effects</strong> such as week-of-year seasonality features</li>
-    <li><strong>Explore state clustering</strong> to see whether similar states share predictive patterns</li>
-  </ul>
-
-  <p>A particularly interesting extension would be to move from classification toward probability-based decision support. Rather than only predicting “increase” or “decrease,” the model could estimate confidence levels, which would be more actionable for downstream users.</p>
-
-  <h2>Final Takeaway</h2>
-  <p>This project is a strong example of practical time-aware machine learning. It takes publicly available economic data, structures it carefully, and applies a reasonable model to answer a meaningful question about business dynamism in the United States.</p>
-
-  <p>More importantly, it reflects a solid analytical mindset: validate first, explore second, model third, and interpret throughout. That is exactly the kind of discipline that turns a notebook into a compelling data science story.</p>
-
-  <p>If you wanted to publish this as a portfolio piece, it is already close. With a short summary of actual performance metrics and a few visuals exported cleanly from the notebook, it could become an excellent technical blog post or project case study.</p>
-
-  <div class="footer">
-    Generated as an HTML blog post from the content of <em>Business_Formation_Analysis_Project.pdf</em>.
-  </div>
-</body>
-</html>
-''')
-
-buf = io.BytesIO(html.encode('utf-8'))
-save_file('business_formation_blogpost.html', buf.getvalue(), 'text/html')
-print('Created business_formation_blogpost.html')
+  With over 62% out of sample accuracy the model is not terrible, however it only slightly outperforms a naive estimator (random) it should be further compared to another naive benchmark like mean() based estimator. The model seems to perform a bit better for prediction of Decreases in state level business applications count compared to prediction of other outcomes.
