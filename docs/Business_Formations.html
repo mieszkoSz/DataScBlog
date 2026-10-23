@@ -17,6 +17,9 @@
   </style>
 </head>
 <body>
+
+  <img src="./Designer.png" />
+
   <h1>From Notebook to Narrative: Predicting U.S. Business Formation with Random Forests</h1>
   
   <p>One of the most interesting things about applied data science is that it often begins with a very practical question: <em>can we predict what happens next?</em> In this project, that question is framed around U.S. business formation activity. Using weekly Business Formation Statistics (BFS) from the U.S. Census Bureau, the notebook explores whether state-level business application activity can be classified as an <strong>increase</strong>, <strong>decrease</strong>, or <strong>constant</strong> relative to the previous week.</p>
@@ -135,3 +138,26 @@
   - <strong>Previous week state CBA_NSA</strong>
 
   With over 62% out of sample accuracy the model is not terrible, however it only slightly outperforms a naive estimator (random) it should be further compared to another naive benchmark like mean() based estimator. The model seems to perform a bit better for prediction of Decreases in state level business applications count compared to prediction of other outcomes.
+
+  <h2> QA summary </h2>
+
+  <p>
+
+    <b>Question 1:</b>
+    Can current week state level business formation be predicted accurately? (INCREASE vs DECREASE vs CONSTANT)
+    <b>Answer</b>
+    Yes the model using tree depth of 7 was able to achieve a test-set accuracy of 0.623
+
+    <b>Question 2:</b>
+    Which features have the highest explanatory power for current week state level application?
+    <b>Answer</b>
+    - National current CBA_NSA
+    - National current HBA_NSA
+    - Previous week state CBA_NSA
+
+    <b>Question 3:</b>
+    Can Random Forest model achieve better prediction accuracy than a naive random classification?
+    <b>Answer</b>
+    Yes the model has a test-set accuracy of 0.623 vs 0.4954 for the naive random classificator.
+
+  </p>
